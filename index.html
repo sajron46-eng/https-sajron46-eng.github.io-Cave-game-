@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Cave Game rd-131655 HTML Recreation</title>
+<title>Cave Game rd-132211 HTML Recreation</title>
 <style>
   html, body {
     margin: 0;
@@ -66,29 +66,47 @@
   .keyBtn {
     position: absolute;
     right: 18px;
-    width: 68px;
+    width: 74px;
     height: 46px;
     border-radius: 6px;
     background: rgba(160,160,160,0.18);
     border: 2px solid rgba(255,255,255,0.16);
     color: rgba(255,255,255,0.58);
-    font: 14px monospace;
+    font: 12px monospace;
     display: none;
     align-items: center;
     justify-content: center;
     pointer-events: auto;
   }
 
-  #lmbBtn {
+  #placeBtn {
+    bottom: 188px;
+  }
+
+  #breakBtn {
     bottom: 134px;
   }
 
-  #rmbBtn {
+  #enterBtn {
     bottom: 80px;
   }
 
   #rBtn {
     bottom: 26px;
+  }
+
+  #saveNote {
+    position: absolute;
+    left: 50%;
+    top: 14px;
+    transform: translateX(-50%);
+    color: rgba(255,255,255,0.72);
+    font: 12px monospace;
+    background: rgba(0,0,0,0.25);
+    padding: 4px 8px;
+    border-radius: 3px;
+    opacity: 0;
+    pointer-events: none;
   }
 
   @media (pointer: coarse) {
@@ -101,11 +119,15 @@
 <body>
 <div id="frame">
   <canvas id="game" width="128" height="96"></canvas>
+
   <div id="stickBase"><div id="stickKnob"></div></div>
 
-  <div id="lmbBtn" class="keyBtn">LMB</div>
-  <div id="rmbBtn" class="keyBtn">RMB</div>
+  <div id="placeBtn" class="keyBtn">PLACE</div>
+  <div id="breakBtn" class="keyBtn">BREAK</div>
+  <div id="enterBtn" class="keyBtn">ENTER</div>
   <div id="rBtn" class="keyBtn">R</div>
+
+  <div id="saveNote">SAVED</div>
 </div>
 
 <script>
@@ -121,14 +143,15 @@ const H = canvas.height;
 const image = ctx.createImageData(W, H);
 const pixels = image.data;
 
+const SAVE_KEY = "cave_game_rd_132211_changed_blocks_v1";
+
 const WORLD = 256;
 const MAX_Y = 64;
-const FLAT_HEIGHT = 30;
+const SURFACE_Y = 30;
 
 const AIR = 0;
 const GRASS = 1;
 const STONE = 2;
-const COBBLE = 3;
 
 const RENDER_DISTANCE = 34;
 const BUILD_DISTANCE = 5.5;
@@ -137,7 +160,7 @@ const changed = new Map();
 
 const player = {
   x: 128.5,
-  y: FLAT_HEIGHT + 1.02,
+  y: SURFACE_Y + 1.02,
   z: 128.5,
   vy: 0,
   yaw: 0,
@@ -159,14 +182,17 @@ let lastLookY = 0;
 const stickBase = document.getElementById("stickBase");
 const stickKnob = document.getElementById("stickKnob");
 
-const lmbBtn = document.getElementById("lmbBtn");
-const rmbBtn = document.getElementById("rmbBtn");
+const placeBtn = document.getElementById("placeBtn");
+const breakBtn = document.getElementById("breakBtn");
+const enterBtn = document.getElementById("enterBtn");
 const rBtn = document.getElementById("rBtn");
+const saveNote = document.getElementById("saveNote");
 
 let cachedTarget = { hit: false };
 let targetTimer = 0;
+let saveNoteTimer = 0;
 
-function key(x, y, z) {
+function blockKey(x, y, z) {
   return x + "," + y + "," + z;
 }
 
@@ -188,8 +214,8 @@ function generatedBlock(x, y, z) {
   if (x < 0 || z < 0 || x >= WORLD || z >= WORLD) return AIR;
   if (y < 0 || y >= MAX_Y) return AIR;
 
-  if (y > FLAT_HEIGHT) return AIR;
-  if (y === FLAT_HEIGHT) return GRASS;
+  if (y > SURFACE_Y) return AIR;
+  if (y === SURFACE_Y) return GRASS;
   return STONE;
 }
 
@@ -198,8 +224,11 @@ function blockAt(x, y, z) {
   y = Math.floor(y);
   z = Math.floor(z);
 
-  const k = key(x, y, z);
-  if (changed.has(k)) return changed.get(k);
+  const k = blockKey(x, y, z);
+
+  if (changed.has(k)) {
+    return changed.get(k);
+  }
 
   return generatedBlock(x, y, z);
 }
@@ -212,7 +241,69 @@ function setBlock(x, y, z, type) {
   if (x < 0 || z < 0 || x >= WORLD || z >= WORLD) return;
   if (y < 0 || y >= MAX_Y) return;
 
-  changed.set(key(x, y, z), type);
+  const natural = generatedBlock(x, y, z);
+  const k = blockKey(x, y, z);
+
+  if (type === natural) {
+    changed.delete(k);
+  } else {
+    changed.set(k, type);
+  }
+}
+
+function placedBlockType(y) {
+  if (y === SURFACE_Y) return GRASS;
+  return STONE;
+}
+
+function saveWorld() {
+  const arr = [];
+
+  changed.forEach((type, k) => {
+    arr.push(k + "," + type);
+  });
+
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify(arr));
+    saveNoteTimer = 1.0;
+    saveNote.style.opacity = "1";
+  } catch (e) {}
+}
+
+function loadWorld() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return;
+
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) return;
+
+    changed.clear();
+
+    for (const item of arr) {
+      const p = String(item).split(",");
+      if (p.length !== 4) continue;
+
+      const x = Number(p[0]);
+      const y = Number(p[1]);
+      const z = Number(p[2]);
+      const type = Number(p[3]);
+
+      if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) continue;
+      if (type !== AIR && type !== GRASS && type !== STONE) continue;
+
+      changed.set(blockKey(x, y, z), type);
+    }
+  } catch (e) {
+    changed.clear();
+  }
+}
+
+function respawnToSurface() {
+  player.x = clamp(player.x, 1.5, WORLD - 2.5);
+  player.z = clamp(player.z, 1.5, WORLD - 2.5);
+  player.y = SURFACE_Y + 1.02;
+  player.vy = 0;
 }
 
 function texColor(type, faceAxis, step, wx, wy, wz) {
@@ -243,11 +334,15 @@ function texColor(type, faceAxis, step, wx, wy, wz) {
       r = 58 + noise * 18;
       g = 140 + noise * 30;
       b = 44 + noise * 14;
-      if (((tx + ty) & 3) === 0) g += 12;
+
+      if (((tx + ty) & 3) === 0) {
+        g += 12;
+      }
     } else {
       r = 104 + noise * 18;
       g = 82 + noise * 12;
       b = 44 + noise * 10;
+
       if (ty < 2) {
         r = 68 + noise * 14;
         g = 122 + noise * 20;
@@ -257,27 +352,23 @@ function texColor(type, faceAxis, step, wx, wy, wz) {
   }
 
   if (type === STONE) {
-    const q = 88 + noise * 34;
+    const crack = (((tx >> 1) + (ty >> 1)) & 1);
+    const q = 84 + noise * 34 - crack * 8;
+
     r = q;
     g = q;
     b = q;
+
+    if (tx % 2 === 0 || ty % 2 === 0) {
+      r -= 10;
+      g -= 10;
+      b -= 10;
+    }
+
     if (((tx * 3 + ty * 5) & 7) === 0) {
       r -= 12;
       g -= 12;
       b -= 12;
-    }
-  }
-
-  if (type === COBBLE) {
-    const crack = (((tx >> 1) + (ty >> 1)) & 1);
-    const q = 82 + noise * 30 - crack * 10;
-    r = q;
-    g = q;
-    b = q;
-    if (tx % 2 === 0 || ty % 2 === 0) {
-      r -= 16;
-      g -= 16;
-      b -= 16;
     }
   }
 
@@ -333,6 +424,7 @@ function raycast(ox, oy, oz, dx, dy, dz, maxDist) {
     if (dist > maxDist) break;
 
     const type = blockAt(x, y, z);
+
     if (type !== AIR) {
       return {
         hit: true,
@@ -373,19 +465,11 @@ function getTargetBlock() {
 
 function updateTarget(dt) {
   targetTimer -= dt;
+
   if (targetTimer <= 0) {
     cachedTarget = getTargetBlock();
     targetTimer = 0.05;
   }
-}
-
-function breakBlock() {
-  const hit = getTargetBlock();
-
-  if (!hit.hit) return;
-
-  setBlock(hit.x, hit.y, hit.z, AIR);
-  cachedTarget = getTargetBlock();
 }
 
 function placeBlock() {
@@ -404,15 +488,17 @@ function placeBlock() {
   if (blockAt(nx, ny, nz) !== AIR) return;
   if (collidesAt(player.x, player.y, player.z, nx, ny, nz)) return;
 
-  setBlock(nx, ny, nz, COBBLE);
+  setBlock(nx, ny, nz, placedBlockType(ny));
   cachedTarget = getTargetBlock();
 }
 
-function respawnToSurface() {
-  player.x = clamp(player.x, 1.5, WORLD - 2.5);
-  player.z = clamp(player.z, 1.5, WORLD - 2.5);
-  player.y = FLAT_HEIGHT + 1.02;
-  player.vy = 0;
+function breakBlock() {
+  const hit = getTargetBlock();
+
+  if (!hit.hit) return;
+
+  setBlock(hit.x, hit.y, hit.z, AIR);
+  cachedTarget = getTargetBlock();
 }
 
 function render() {
@@ -448,6 +534,7 @@ function render() {
       let dz = forward[2] + right[2] * px + up[2] * py;
 
       const len = Math.hypot(dx, dy, dz);
+
       dx /= len;
       dy /= len;
       dz /= len;
@@ -460,11 +547,13 @@ function render() {
 
       if (!hit.hit) {
         const t = y / H;
+
         r = 112 - t * 18;
         g = 183 - t * 28;
         b = 255 - t * 36;
       } else {
         const col = texColor(hit.type, hit.axis, hit.step, hit.wx, hit.wy, hit.wz);
+
         r = col[0];
         g = col[1];
         b = col[2];
@@ -498,6 +587,7 @@ function render() {
         b *= shade;
 
         const fog = clamp(hit.dist / RENDER_DISTANCE, 0, 1);
+
         r = r * (1 - fog) + 112 * fog;
         g = g * (1 - fog) + 183 * fog;
         b = b * (1 - fog) + 255 * fog;
@@ -515,6 +605,7 @@ function render() {
 
 function collidesAt(px, py, pz, extraX, extraY, extraZ) {
   const r = player.radius;
+
   const minX = px - r;
   const maxX = px + r;
   const minY = py + 0.05;
@@ -525,8 +616,13 @@ function collidesAt(px, py, pz, extraX, extraY, extraZ) {
   for (let x = Math.floor(minX); x <= Math.floor(maxX); x++) {
     for (let y = Math.floor(minY); y <= Math.floor(maxY); y++) {
       for (let z = Math.floor(minZ); z <= Math.floor(maxZ); z++) {
-        if (extraX !== undefined && x === extraX && y === extraY && z === extraZ) return true;
-        if (blockAt(x, y, z) !== AIR) return true;
+        if (extraX !== undefined && x === extraX && y === extraY && z === extraZ) {
+          return true;
+        }
+
+        if (blockAt(x, y, z) !== AIR) {
+          return true;
+        }
       }
     }
   }
@@ -547,6 +643,7 @@ function movePlayer(dt) {
   mz += touchMove.z;
 
   const mag = Math.hypot(mx, mz);
+
   if (mag > 0) {
     mx /= mag;
     mz /= mag;
@@ -560,10 +657,16 @@ function movePlayer(dt) {
   const vz = (cos * mz - sin * mx) * speed * dt;
 
   let nx = player.x + vx;
-  if (!collidesAt(nx, player.y, player.z)) player.x = nx;
+
+  if (!collidesAt(nx, player.y, player.z)) {
+    player.x = nx;
+  }
 
   let nz = player.z + vz;
-  if (!collidesAt(player.x, player.y, nz)) player.z = nz;
+
+  if (!collidesAt(player.x, player.y, nz)) {
+    player.z = nz;
+  }
 
   player.vy -= 22 * dt;
   player.vy = Math.max(player.vy, -38);
@@ -572,11 +675,17 @@ function movePlayer(dt) {
 
   if (collidesAt(player.x, ny, player.z)) {
     if (player.vy < 0) {
-      while (collidesAt(player.x, ny, player.z)) ny += 0.03;
+      while (collidesAt(player.x, ny, player.z)) {
+        ny += 0.03;
+      }
+
       player.y = ny;
       player.vy = 0;
     } else {
-      while (collidesAt(player.x, ny, player.z)) ny -= 0.03;
+      while (collidesAt(player.x, ny, player.z)) {
+        ny -= 0.03;
+      }
+
       player.y = ny;
       player.vy = 0;
     }
@@ -590,6 +699,10 @@ window.addEventListener("keydown", e => {
 
   if (e.code === "KeyR") {
     respawnToSurface();
+  }
+
+  if (e.code === "Enter") {
+    saveWorld();
   }
 
   if (
@@ -606,7 +719,9 @@ window.addEventListener("keyup", e => {
 });
 
 canvas.addEventListener("click", () => {
-  if (canvas.requestPointerLock) canvas.requestPointerLock();
+  if (canvas.requestPointerLock) {
+    canvas.requestPointerLock();
+  }
 });
 
 document.addEventListener("mousemove", e => {
@@ -618,22 +733,32 @@ document.addEventListener("mousemove", e => {
 });
 
 canvas.addEventListener("mousedown", e => {
-  if (e.button === 0) breakBlock();
-  if (e.button === 2) placeBlock();
+  if (e.button === 0) {
+    placeBlock();
+  }
+
+  if (e.button === 2) {
+    breakBlock();
+  }
 });
 
 canvas.addEventListener("contextmenu", e => {
   e.preventDefault();
 });
 
-lmbBtn.addEventListener("touchstart", e => {
+placeBtn.addEventListener("touchstart", e => {
+  e.preventDefault();
+  placeBlock();
+}, { passive: false });
+
+breakBtn.addEventListener("touchstart", e => {
   e.preventDefault();
   breakBlock();
 }, { passive: false });
 
-rmbBtn.addEventListener("touchstart", e => {
+enterBtn.addEventListener("touchstart", e => {
   e.preventDefault();
-  placeBlock();
+  saveWorld();
 }, { passive: false });
 
 rBtn.addEventListener("touchstart", e => {
@@ -644,6 +769,7 @@ rBtn.addEventListener("touchstart", e => {
 function getTouchSide(t) {
   const rect = canvas.getBoundingClientRect();
   const x = t.clientX - rect.left;
+
   return x < rect.width * 0.45 ? "left" : "right";
 }
 
@@ -652,7 +778,10 @@ window.addEventListener("touchstart", e => {
 
   for (const t of e.changedTouches) {
     const target = document.elementFromPoint(t.clientX, t.clientY);
-    if (target === lmbBtn || target === rmbBtn || target === rBtn) continue;
+
+    if (target === placeBtn || target === breakBtn || target === enterBtn || target === rBtn) {
+      continue;
+    }
 
     const side = getTouchSide(t);
 
@@ -738,16 +867,29 @@ function endTouch(e) {
 window.addEventListener("touchend", endTouch, { passive: false });
 window.addEventListener("touchcancel", endTouch, { passive: false });
 
+window.addEventListener("beforeunload", () => {
+  saveWorld();
+});
+
 let last = performance.now();
 let renderAccumulator = 0;
 
 function loop(now) {
   let dt = (now - last) / 1000;
   last = now;
+
   dt = Math.min(dt, 0.05);
 
   movePlayer(dt);
   updateTarget(dt);
+
+  if (saveNoteTimer > 0) {
+    saveNoteTimer -= dt;
+
+    if (saveNoteTimer <= 0) {
+      saveNote.style.opacity = "0";
+    }
+  }
 
   renderAccumulator += dt;
 
@@ -759,6 +901,8 @@ function loop(now) {
   requestAnimationFrame(loop);
 }
 
+loadWorld();
+respawnToSurface();
 render();
 requestAnimationFrame(loop);
 
