@@ -3,106 +3,133 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Cave Game rd-132328 HTML Recreation</title>
+<title>Cave Game rd-20090515 HTML Recreation</title>
 <style>
-  html, body {
-    margin: 0;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-    background: #000;
-    touch-action: none;
-    user-select: none;
-    -webkit-user-select: none;
-  }
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
 
-  body {
+body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#frame {
+  position: relative;
+  width: min(100vw, calc(100vh * 4 / 3));
+  height: min(100vh, calc(100vw * 3 / 4));
+  background: #000;
+  overflow: hidden;
+}
+
+canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  background: #6fb7ff;
+}
+
+#stickBase {
+  position: absolute;
+  left: 22px;
+  bottom: 26px;
+  width: 112px;
+  height: 112px;
+  border-radius: 50%;
+  background: rgba(180,180,180,0.13);
+  border: 2px solid rgba(255,255,255,0.12);
+  display: none;
+  pointer-events: none;
+}
+
+#stickKnob {
+  position: absolute;
+  left: 36px;
+  top: 36px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(220,220,220,0.25);
+  border: 2px solid rgba(255,255,255,0.18);
+}
+
+.keyBtn {
+  position: absolute;
+  right: 18px;
+  width: 74px;
+  height: 42px;
+  border-radius: 6px;
+  background: rgba(160,160,160,0.18);
+  border: 2px solid rgba(255,255,255,0.16);
+  color: rgba(255,255,255,0.58);
+  font: 12px monospace;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+}
+
+#placeBtn { bottom: 242px; }
+#breakBtn { bottom: 194px; }
+#gBtn { bottom: 146px; }
+#enterBtn { bottom: 98px; }
+#rBtn { bottom: 50px; }
+
+.blockBtn {
+  position: absolute;
+  bottom: 8px;
+  width: 34px;
+  height: 34px;
+  border-radius: 4px;
+  background: rgba(160,160,160,0.16);
+  border: 2px solid rgba(255,255,255,0.16);
+  color: rgba(255,255,255,0.68);
+  font: 13px monospace;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+}
+
+#b1 { right: 164px; }
+#b2 { right: 124px; }
+#b3 { right: 84px; }
+#b4 { right: 44px; }
+
+.blockBtn.sel {
+  background: rgba(255,255,255,0.30);
+  border-color: rgba(255,255,255,0.50);
+}
+
+#saveNote {
+  position: absolute;
+  left: 50%;
+  top: 14px;
+  transform: translateX(-50%);
+  color: rgba(255,255,255,0.72);
+  font: 12px monospace;
+  background: rgba(0,0,0,0.25);
+  padding: 4px 8px;
+  border-radius: 3px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (pointer: coarse) {
+  #stickBase, .keyBtn, .blockBtn {
     display: flex;
-    align-items: center;
-    justify-content: center;
   }
-
-  #frame {
-    position: relative;
-    width: min(100vw, calc(100vh * 4 / 3));
-    height: min(100vh, calc(100vw * 3 / 4));
-    background: #000;
-    overflow: hidden;
-  }
-
-  canvas {
-    width: 100%;
-    height: 100%;
-    display: block;
-    image-rendering: pixelated;
-    image-rendering: crisp-edges;
-    background: #6fb7ff;
-  }
-
-  #stickBase {
-    position: absolute;
-    left: 22px;
-    bottom: 26px;
-    width: 112px;
-    height: 112px;
-    border-radius: 50%;
-    background: rgba(180,180,180,0.13);
-    border: 2px solid rgba(255,255,255,0.12);
-    display: none;
-    pointer-events: none;
-  }
-
-  #stickKnob {
-    position: absolute;
-    left: 36px;
-    top: 36px;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: rgba(220,220,220,0.25);
-    border: 2px solid rgba(255,255,255,0.18);
-  }
-
-  .keyBtn {
-    position: absolute;
-    right: 18px;
-    width: 74px;
-    height: 46px;
-    border-radius: 6px;
-    background: rgba(160,160,160,0.18);
-    border: 2px solid rgba(255,255,255,0.16);
-    color: rgba(255,255,255,0.58);
-    font: 12px monospace;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    pointer-events: auto;
-  }
-
-  #placeBtn { bottom: 188px; }
-  #breakBtn { bottom: 134px; }
-  #enterBtn { bottom: 80px; }
-  #rBtn { bottom: 26px; }
-
-  #saveNote {
-    position: absolute;
-    left: 50%;
-    top: 14px;
-    transform: translateX(-50%);
-    color: rgba(255,255,255,0.72);
-    font: 12px monospace;
-    background: rgba(0,0,0,0.25);
-    padding: 4px 8px;
-    border-radius: 3px;
-    opacity: 0;
-    pointer-events: none;
-  }
-
-  @media (pointer: coarse) {
-    #stickBase, .keyBtn {
-      display: flex;
-    }
-  }
+}
 </style>
 </head>
 <body>
@@ -111,10 +138,16 @@
 
   <div id="stickBase"><div id="stickKnob"></div></div>
 
-  <div id="placeBtn" class="keyBtn">PLACE</div>
-  <div id="breakBtn" class="keyBtn">BREAK</div>
+  <div id="placeBtn" class="keyBtn">RBM</div>
+  <div id="breakBtn" class="keyBtn">LBM</div>
+  <div id="gBtn" class="keyBtn">G</div>
   <div id="enterBtn" class="keyBtn">ENTER</div>
   <div id="rBtn" class="keyBtn">R</div>
+
+  <div id="b1" class="blockBtn">1</div>
+  <div id="b2" class="blockBtn">2</div>
+  <div id="b3" class="blockBtn">3</div>
+  <div id="b4" class="blockBtn">4</div>
 
   <div id="saveNote">SAVED</div>
 </div>
@@ -133,7 +166,7 @@ const image = ctx.createImageData(W, H);
 const pixels = image.data;
 const zbuf = new Float32Array(W * H);
 
-const SAVE_KEY = "cave_game_rd_132328_changed_blocks_v1";
+const SAVE_KEY = "cave_game_rd_20090515_world_v2";
 
 const WORLD = 256;
 const MAX_Y = 64;
@@ -142,14 +175,18 @@ const SURFACE_Y = 30;
 const AIR = 0;
 const GRASS = 1;
 const STONE = 2;
+const DIRT = 3;
+const PLANKS = 4;
 
 const RENDER_DISTANCE = 34;
 const HUMAN_RENDER_DISTANCE = 30;
 const BUILD_DISTANCE = 5.5;
-const HUMAN_COUNT = 100;
+const HUMAN_MAX = 180;
 
 const changed = new Map();
 const humans = [];
+
+let selectedBlock = GRASS;
 
 const player = {
   x: 128.5,
@@ -177,14 +214,22 @@ const stickKnob = document.getElementById("stickKnob");
 
 const placeBtn = document.getElementById("placeBtn");
 const breakBtn = document.getElementById("breakBtn");
+const gBtn = document.getElementById("gBtn");
 const enterBtn = document.getElementById("enterBtn");
 const rBtn = document.getElementById("rBtn");
+
+const b1 = document.getElementById("b1");
+const b2 = document.getElementById("b2");
+const b3 = document.getElementById("b3");
+const b4 = document.getElementById("b4");
+
+const blockButtons = [null, b1, b2, b3, b4];
+
 const saveNote = document.getElementById("saveNote");
 
 let cachedTarget = { hit: false };
 let targetTimer = 0;
 let saveNoteTimer = 0;
-let humanThinkTimer = 0;
 
 function blockKey(x, y, z) {
   return x + "," + y + "," + z;
@@ -224,10 +269,7 @@ function blockAt(x, y, z) {
   z = Math.floor(z);
 
   const k = blockKey(x, y, z);
-
-  if (changed.has(k)) {
-    return changed.get(k);
-  }
+  if (changed.has(k)) return changed.get(k);
 
   return generatedBlock(x, y, z);
 }
@@ -243,16 +285,16 @@ function setBlock(x, y, z, type) {
   const natural = generatedBlock(x, y, z);
   const k = blockKey(x, y, z);
 
-  if (type === natural) {
-    changed.delete(k);
-  } else {
-    changed.set(k, type);
-  }
+  if (type === natural) changed.delete(k);
+  else changed.set(k, type);
 }
 
-function placedBlockType(y) {
-  if (y === SURFACE_Y) return GRASS;
-  return STONE;
+function setSelectedBlock(type) {
+  selectedBlock = type;
+
+  for (let i = 1; i <= 4; i++) {
+    blockButtons[i].classList.toggle("sel", i === selectedBlock);
+  }
 }
 
 function saveWorld() {
@@ -263,7 +305,11 @@ function saveWorld() {
   });
 
   try {
-    localStorage.setItem(SAVE_KEY, JSON.stringify(arr));
+    localStorage.setItem(SAVE_KEY, JSON.stringify({
+      changed: arr,
+      selectedBlock
+    }));
+
     saveNoteTimer = 1.0;
     saveNote.style.opacity = "1";
   } catch (e) {}
@@ -274,24 +320,30 @@ function loadWorld() {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return;
 
-    const arr = JSON.parse(raw);
-    if (!Array.isArray(arr)) return;
+    const data = JSON.parse(raw);
+    const arr = Array.isArray(data) ? data : data.changed;
 
     changed.clear();
 
-    for (const item of arr) {
-      const p = String(item).split(",");
-      if (p.length !== 4) continue;
+    if (Array.isArray(arr)) {
+      for (const item of arr) {
+        const p = String(item).split(",");
+        if (p.length !== 4) continue;
 
-      const x = Number(p[0]);
-      const y = Number(p[1]);
-      const z = Number(p[2]);
-      const type = Number(p[3]);
+        const x = Number(p[0]);
+        const y = Number(p[1]);
+        const z = Number(p[2]);
+        const type = Number(p[3]);
 
-      if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) continue;
-      if (type !== AIR && type !== GRASS && type !== STONE) continue;
+        if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) continue;
+        if (![AIR, GRASS, STONE, DIRT, PLANKS].includes(type)) continue;
 
-      changed.set(blockKey(x, y, z), type);
+        changed.set(blockKey(x, y, z), type);
+      }
+    }
+
+    if (data && Number.isFinite(data.selectedBlock) && data.selectedBlock >= 1 && data.selectedBlock <= 4) {
+      selectedBlock = data.selectedBlock;
     }
   } catch (e) {
     changed.clear();
@@ -305,34 +357,40 @@ function respawnToSurface() {
   player.vy = 0;
 }
 
-function spawnHumans() {
-  humans.length = 0;
+function makeHuman(x, z, seed) {
+  return {
+    x,
+    y: SURFACE_Y + 1.01,
+    z,
+    dir: rand01(seed * 3 + 3) * Math.PI * 2,
+    speed: 0.55 + rand01(seed * 5 + 4) * 0.45,
+    timer: rand01(seed * 7 + 5) * 3,
+    walk: rand01(seed * 11 + 6) > 0.35,
+    seed
+  };
+}
 
-  for (let i = 0; i < HUMAN_COUNT; i++) {
-    let x = 8 + rand01(i * 3 + 1) * (WORLD - 16);
-    let z = 8 + rand01(i * 3 + 2) * (WORLD - 16);
+function spawnHumanNearPlayer() {
+  if (humans.length >= HUMAN_MAX) return;
 
-    if (Math.abs(x - player.x) < 5 && Math.abs(z - player.z) < 5) {
-      x += 10;
-      z += 10;
+  const base = performance.now() * 0.001 + humans.length * 17;
+  const ang = player.yaw + Math.PI / 2 + (rand01(base) - 0.5) * 1.4;
+  let dist = 2.2 + rand01(base + 9) * 1.6;
+
+  for (let i = 0; i < 8; i++) {
+    const x = clamp(player.x + Math.sin(ang + i * 0.7) * dist, 1.5, WORLD - 2.5);
+    const z = clamp(player.z + Math.cos(ang + i * 0.7) * dist, 1.5, WORLD - 2.5);
+
+    if (blockAt(x, SURFACE_Y + 1, z) === AIR && blockAt(x, SURFACE_Y, z) !== AIR) {
+      humans.push(makeHuman(x, z, humans.length + 500));
+      return;
     }
 
-    humans.push({
-      x,
-      y: SURFACE_Y + 1.01,
-      z,
-      dir: rand01(i * 3 + 3) * Math.PI * 2,
-      speed: 0.55 + rand01(i * 5 + 4) * 0.45,
-      timer: rand01(i * 7 + 5) * 3,
-      walk: rand01(i * 11 + 6) > 0.35,
-      seed: i
-    });
+    dist += 0.8;
   }
 }
 
 function updateHumans(dt) {
-  humanThinkTimer -= dt;
-
   const farLimitSq = 52 * 52;
 
   for (let i = 0; i < humans.length; i++) {
@@ -404,15 +462,11 @@ function texColor(type, faceAxis, step, wx, wy, wz) {
       r = 58 + noise * 18;
       g = 140 + noise * 30;
       b = 44 + noise * 14;
-
-      if (((tx + ty) & 3) === 0) {
-        g += 12;
-      }
+      if (((tx + ty) & 3) === 0) g += 12;
     } else {
       r = 104 + noise * 18;
       g = 82 + noise * 12;
       b = 44 + noise * 10;
-
       if (ty < 2) {
         r = 68 + noise * 14;
         g = 122 + noise * 20;
@@ -442,6 +496,35 @@ function texColor(type, faceAxis, step, wx, wy, wz) {
     }
   }
 
+  if (type === DIRT) {
+    r = 96 + noise * 26;
+    g = 62 + noise * 18;
+    b = 34 + noise * 12;
+
+    if (((tx + ty * 2) & 5) === 0) {
+      r -= 14;
+      g -= 10;
+      b -= 6;
+    }
+  }
+
+  if (type === PLANKS) {
+    r = 132 + noise * 30;
+    g = 88 + noise * 18;
+    b = 42 + noise * 10;
+
+    if (ty === 1 || ty === 5) {
+      r -= 22;
+      g -= 16;
+      b -= 8;
+    }
+
+    if ((tx + Math.floor(ty / 2)) % 4 === 0) {
+      r += 12;
+      g += 6;
+    }
+  }
+
   return [r, g, b];
 }
 
@@ -450,13 +533,13 @@ function raycast(ox, oy, oz, dx, dy, dz, maxDist) {
   let y = Math.floor(oy);
   let z = Math.floor(oz);
 
-  let stepX = dx > 0 ? 1 : -1;
-  let stepY = dy > 0 ? 1 : -1;
-  let stepZ = dz > 0 ? 1 : -1;
+  const stepX = dx > 0 ? 1 : -1;
+  const stepY = dy > 0 ? 1 : -1;
+  const stepZ = dz > 0 ? 1 : -1;
 
-  let tDeltaX = dx !== 0 ? Math.abs(1 / dx) : 1e30;
-  let tDeltaY = dy !== 0 ? Math.abs(1 / dy) : 1e30;
-  let tDeltaZ = dz !== 0 ? Math.abs(1 / dz) : 1e30;
+  const tDeltaX = dx !== 0 ? Math.abs(1 / dx) : 1e30;
+  const tDeltaY = dy !== 0 ? Math.abs(1 / dy) : 1e30;
+  const tDeltaZ = dz !== 0 ? Math.abs(1 / dz) : 1e30;
 
   let tMaxX = dx > 0 ? (Math.floor(ox) + 1 - ox) / dx : (ox - Math.floor(ox)) / -dx;
   let tMaxY = dy > 0 ? (Math.floor(oy) + 1 - oy) / dy : (oy - Math.floor(oy)) / -dy;
@@ -544,7 +627,6 @@ function updateTarget(dt) {
 
 function placeBlock() {
   const hit = getTargetBlock();
-
   if (!hit.hit) return;
 
   let nx = hit.x;
@@ -558,13 +640,12 @@ function placeBlock() {
   if (blockAt(nx, ny, nz) !== AIR) return;
   if (collidesAt(player.x, player.y, player.z, nx, ny, nz)) return;
 
-  setBlock(nx, ny, nz, placedBlockType(ny));
+  setBlock(nx, ny, nz, selectedBlock);
   cachedTarget = getTargetBlock();
 }
 
 function breakBlock() {
   const hit = getTargetBlock();
-
   if (!hit.hit) return;
 
   setBlock(hit.x, hit.y, hit.z, AIR);
@@ -605,7 +686,6 @@ function drawHumans(camera) {
 
   for (let i = 0; i < humans.length; i++) {
     const h = humans[i];
-
     const dx = h.x - player.x;
     const dz = h.z - player.z;
     const d2 = dx * dx + dz * dz;
@@ -638,32 +718,52 @@ function drawHumans(camera) {
 
     const bob = h.walk ? Math.sin(performance.now() * 0.006 + h.seed) * s * 0.05 : 0;
 
-    const skinR = 168;
-    const skinG = 118;
-    const skinB = 78;
+    drawHumanPart(baseX - s * 0.18, baseY - s * 0.08 + bob, cz, s * 0.22, s * 0.55, 54, 52, 80);
+    drawHumanPart(baseX + s * 0.18, baseY - s * 0.08 - bob, cz, s * 0.22, s * 0.55, 54, 52, 80);
 
-    const shirtR = 58;
-    const shirtG = 76;
-    const shirtB = 150;
+    drawHumanPart(baseX, baseY - s * 0.55, cz, s * 0.48, s * 0.62, 58, 76, 150);
 
-    const pantsR = 54;
-    const pantsG = 52;
-    const pantsB = 80;
+    drawHumanPart(baseX - s * 0.42, baseY - s * 0.55 - bob, cz, s * 0.18, s * 0.55, 128, 82, 58);
+    drawHumanPart(baseX + s * 0.42, baseY - s * 0.55 + bob, cz, s * 0.18, s * 0.55, 128, 82, 58);
 
-    const armR = 128;
-    const armG = 82;
-    const armB = 58;
-
-    drawHumanPart(baseX - s * 0.18, baseY - s * 0.08 + bob, cz, s * 0.22, s * 0.55, pantsR, pantsG, pantsB);
-    drawHumanPart(baseX + s * 0.18, baseY - s * 0.08 - bob, cz, s * 0.22, s * 0.55, pantsR, pantsG, pantsB);
-
-    drawHumanPart(baseX, baseY - s * 0.55, cz, s * 0.48, s * 0.62, shirtR, shirtG, shirtB);
-
-    drawHumanPart(baseX - s * 0.42, baseY - s * 0.55 - bob, cz, s * 0.18, s * 0.55, armR, armG, armB);
-    drawHumanPart(baseX + s * 0.42, baseY - s * 0.55 + bob, cz, s * 0.18, s * 0.55, armR, armG, armB);
-
-    drawHumanPart(baseX, baseY - s * 1.02, cz, s * 0.46, s * 0.46, skinR, skinG, skinB);
+    drawHumanPart(baseX, baseY - s * 1.02, cz, s * 0.46, s * 0.46, 168, 118, 78);
   }
+}
+
+function drawCrosshair() {
+  const cx = Math.floor(W / 2);
+  const cy = Math.floor(H / 2);
+
+  ctx.fillStyle = "rgba(255,255,255,0.75)";
+  ctx.fillRect(cx - 3, cy, 7, 1);
+  ctx.fillRect(cx, cy - 3, 1, 7);
+}
+
+function drawSelectedIndicator() {
+  const x0 = 9;
+  const y0 = 7;
+  const size = 15;
+
+  ctx.fillStyle = "rgba(0,0,0,0.28)";
+  ctx.fillRect(4, 4, 31, 24);
+
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const u = x / size;
+      const v = y / size;
+      const wx = u * 2;
+      const wy = v * 2;
+      const wz = 0;
+
+      const c = texColor(selectedBlock, 1, -1, wx, wy, wz);
+      ctx.fillStyle = "rgb(" + Math.floor(c[0]) + "," + Math.floor(c[1]) + "," + Math.floor(c[2]) + ")";
+      ctx.fillRect(x0 + x, y0 + y, 1, 1);
+    }
+  }
+
+  ctx.fillStyle = "rgba(255,255,255,0.82)";
+  ctx.font = "8px monospace";
+  ctx.fillText(String(selectedBlock), 26, 18);
 }
 
 function render() {
@@ -700,7 +800,6 @@ function render() {
       let dz = forward[2] + right[2] * px + up[2] * py;
 
       const len = Math.hypot(dx, dy, dz);
-
       dx /= len;
       dy /= len;
       dz /= len;
@@ -713,7 +812,6 @@ function render() {
 
       if (!hit.hit) {
         const t = y / H;
-
         r = 112 - t * 18;
         g = 183 - t * 28;
         b = 255 - t * 36;
@@ -729,13 +827,9 @@ function render() {
 
         let shade = 1 / (1 + hit.dist * 0.045);
 
-        if (hit.axis === 1) {
-          shade *= hit.step < 0 ? 1.18 : 0.48;
-        } else if (hit.axis === 0) {
-          shade *= 0.72;
-        } else {
-          shade *= 0.84;
-        }
+        if (hit.axis === 1) shade *= hit.step < 0 ? 1.18 : 0.48;
+        else if (hit.axis === 0) shade *= 0.72;
+        else shade *= 0.84;
 
         if (
           target.hit &&
@@ -781,6 +875,8 @@ function render() {
   });
 
   ctx.putImageData(image, 0, 0);
+  drawCrosshair();
+  drawSelectedIndicator();
 }
 
 function collidesAt(px, py, pz, extraX, extraY, extraZ) {
@@ -796,13 +892,8 @@ function collidesAt(px, py, pz, extraX, extraY, extraZ) {
   for (let x = Math.floor(minX); x <= Math.floor(maxX); x++) {
     for (let y = Math.floor(minY); y <= Math.floor(maxY); y++) {
       for (let z = Math.floor(minZ); z <= Math.floor(maxZ); z++) {
-        if (extraX !== undefined && x === extraX && y === extraY && z === extraZ) {
-          return true;
-        }
-
-        if (blockAt(x, y, z) !== AIR) {
-          return true;
-        }
+        if (extraX !== undefined && x === extraX && y === extraY && z === extraZ) return true;
+        if (blockAt(x, y, z) !== AIR) return true;
       }
     }
   }
@@ -837,16 +928,10 @@ function movePlayer(dt) {
   const vz = (cos * mz - sin * mx) * speed * dt;
 
   let nx = player.x + vx;
-
-  if (!collidesAt(nx, player.y, player.z)) {
-    player.x = nx;
-  }
+  if (!collidesAt(nx, player.y, player.z)) player.x = nx;
 
   let nz = player.z + vz;
-
-  if (!collidesAt(player.x, player.y, nz)) {
-    player.z = nz;
-  }
+  if (!collidesAt(player.x, player.y, nz)) player.z = nz;
 
   player.vy -= 22 * dt;
   player.vy = Math.max(player.vy, -38);
@@ -855,17 +940,11 @@ function movePlayer(dt) {
 
   if (collidesAt(player.x, ny, player.z)) {
     if (player.vy < 0) {
-      while (collidesAt(player.x, ny, player.z)) {
-        ny += 0.03;
-      }
-
+      while (collidesAt(player.x, ny, player.z)) ny += 0.03;
       player.y = ny;
       player.vy = 0;
     } else {
-      while (collidesAt(player.x, ny, player.z)) {
-        ny -= 0.03;
-      }
-
+      while (collidesAt(player.x, ny, player.z)) ny -= 0.03;
       player.y = ny;
       player.vy = 0;
     }
@@ -877,19 +956,19 @@ function movePlayer(dt) {
 window.addEventListener("keydown", e => {
   keys[e.code] = true;
 
-  if (e.code === "KeyR") {
-    respawnToSurface();
-  }
+  if (e.code === "Digit1") setSelectedBlock(GRASS);
+  if (e.code === "Digit2") setSelectedBlock(STONE);
+  if (e.code === "Digit3") setSelectedBlock(DIRT);
+  if (e.code === "Digit4") setSelectedBlock(PLANKS);
 
-  if (e.code === "Enter") {
-    saveWorld();
-  }
+  if (e.code === "KeyG") spawnHumanNearPlayer();
+  if (e.code === "KeyR") respawnToSurface();
+  if (e.code === "Enter") saveWorld();
 
   if (
     e.code === "Space" ||
     e.code === "ShiftLeft" ||
-    e.code === "ShiftRight" ||
-    e.code === "KeyG"
+    e.code === "ShiftRight"
   ) {
     e.preventDefault();
   }
@@ -900,9 +979,7 @@ window.addEventListener("keyup", e => {
 });
 
 canvas.addEventListener("click", () => {
-  if (canvas.requestPointerLock) {
-    canvas.requestPointerLock();
-  }
+  if (canvas.requestPointerLock) canvas.requestPointerLock();
 });
 
 document.addEventListener("mousemove", e => {
@@ -914,13 +991,8 @@ document.addEventListener("mousemove", e => {
 });
 
 canvas.addEventListener("mousedown", e => {
-  if (e.button === 0) {
-    placeBlock();
-  }
-
-  if (e.button === 2) {
-    breakBlock();
-  }
+  if (e.button === 0) placeBlock();
+  if (e.button === 2) breakBlock();
 });
 
 canvas.addEventListener("contextmenu", e => {
@@ -937,6 +1009,11 @@ breakBtn.addEventListener("touchstart", e => {
   breakBlock();
 }, { passive: false });
 
+gBtn.addEventListener("touchstart", e => {
+  e.preventDefault();
+  spawnHumanNearPlayer();
+}, { passive: false });
+
 enterBtn.addEventListener("touchstart", e => {
   e.preventDefault();
   saveWorld();
@@ -947,10 +1024,41 @@ rBtn.addEventListener("touchstart", e => {
   respawnToSurface();
 }, { passive: false });
 
+b1.addEventListener("touchstart", e => {
+  e.preventDefault();
+  setSelectedBlock(GRASS);
+}, { passive: false });
+
+b2.addEventListener("touchstart", e => {
+  e.preventDefault();
+  setSelectedBlock(STONE);
+}, { passive: false });
+
+b3.addEventListener("touchstart", e => {
+  e.preventDefault();
+  setSelectedBlock(DIRT);
+}, { passive: false });
+
+b4.addEventListener("touchstart", e => {
+  e.preventDefault();
+  setSelectedBlock(PLANKS);
+}, { passive: false });
+
+function isUiTarget(target) {
+  return target === placeBtn ||
+         target === breakBtn ||
+         target === gBtn ||
+         target === enterBtn ||
+         target === rBtn ||
+         target === b1 ||
+         target === b2 ||
+         target === b3 ||
+         target === b4;
+}
+
 function getTouchSide(t) {
   const rect = canvas.getBoundingClientRect();
   const x = t.clientX - rect.left;
-
   return x < rect.width * 0.45 ? "left" : "right";
 }
 
@@ -959,10 +1067,7 @@ window.addEventListener("touchstart", e => {
 
   for (const t of e.changedTouches) {
     const target = document.elementFromPoint(t.clientX, t.clientY);
-
-    if (target === placeBtn || target === breakBtn || target === enterBtn || target === rBtn) {
-      continue;
-    }
+    if (isUiTarget(target)) continue;
 
     const side = getTouchSide(t);
 
@@ -1039,9 +1144,7 @@ function endTouch(e) {
       stickKnob.style.top = "36px";
     }
 
-    if (t.identifier === lookId) {
-      lookId = null;
-    }
+    if (t.identifier === lookId) lookId = null;
   }
 }
 
@@ -1067,10 +1170,7 @@ function loop(now) {
 
   if (saveNoteTimer > 0) {
     saveNoteTimer -= dt;
-
-    if (saveNoteTimer <= 0) {
-      saveNote.style.opacity = "0";
-    }
+    if (saveNoteTimer <= 0) saveNote.style.opacity = "0";
   }
 
   renderAccumulator += dt;
@@ -1085,7 +1185,7 @@ function loop(now) {
 
 loadWorld();
 respawnToSurface();
-spawnHumans();
+setSelectedBlock(selectedBlock);
 render();
 requestAnimationFrame(loop);
 
