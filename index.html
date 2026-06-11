@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Cave Game rd-20090515 HTML Recreation</title>
+<title>Cave Game HTML Recreation</title>
 <style>
 html, body {
   margin: 0;
@@ -166,7 +166,21 @@ const image = ctx.createImageData(W, H);
 const pixels = image.data;
 const zbuf = new Float32Array(W * H);
 
-const SAVE_KEY = "cave_game_rd_20090515_world_v2";
+/*
+  IMPORTANT:
+  This key must stay the same in all future versions.
+  Do not change it when updating the game.
+*/
+const SAVE_KEY = "cave_game_save";
+
+const OLD_SAVE_KEYS = [
+  "cave_game_rd_20090515_world_v2",
+  "cave_game_rd_20090515_world_v1",
+  "cave_game_rd_132328_changed_blocks_v1",
+  "cave_game_rd_132211_changed_blocks_v1"
+];
+
+const GAME_VERSION = "current";
 
 const WORLD = 256;
 const MAX_Y = 64;
@@ -187,6 +201,7 @@ const changed = new Map();
 const humans = [];
 
 let selectedBlock = GRASS;
+let createdHumansCount = 0;
 
 const player = {
   x: 128.5,
@@ -289,65 +304,177 @@ function setBlock(x, y, z, type) {
   else changed.set(k, type);
 }
 
-function setSelectedBlock(type) {
+function setSelectedBlock(type, autosave = true) {
   selectedBlock = type;
 
   for (let i = 1; i <= 4; i++) {
     blockButtons[i].classList.toggle("sel", i === selectedBlock);
   }
+
+  if (autosave) saveWorld(false);
 }
 
-function saveWorld() {
-  const arr = [];
+function normalizeChangedBlocks(raw) {
+  const result = [];
 
-  changed.forEach((type, k) => {
-    arr.push(k + "," + type);
-  });
+  if (!Array.isArray(raw)) return result;
 
+  for (const item of raw) {
+    if (typeof item === "string") {
+      const p = item.split(",");
+      if (p.length !== 4) continue;
+
+      const x = Number(p[0]);
+      const y = Number(p[1]);
+      const z = Number(p[2]);
+      const type = Number(p[3]);
+
+      if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) continue;
+      if (![AIR, GRASS, STONE, DIRT, PLANKS].includes(type)) continue;
+
+      result.push({ x, y, z, type });
+      continue;
+    }
+
+    if (item && typeof item === "object") {
+      const x = Number(item.x);
+      const y = Number(item.y);
+      const z = Number(item.z);
+      const type = Number(item.type);
+
+      if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) continue;
+      if (![AIR, GRASS, STONE, DIRT, PLANKS].includes(type)) continue;
+
+      result.push({ x, y, z, type });
+    }
+  }
+
+  return result;
+}
+
+function applySaveData(data) {
+  if (!data) return false;
+
+  let blocksRaw = null;
+
+  if (Array.isArray(data)) {
+    blocksRaw = data;
+  } else if (Array.isArray(data.changedBlocks)) {
+    blocksRaw = data.changedBlocks;
+  } else if (Array.isArray(data.changed)) {
+    blocksRaw = data.changed;
+  }
+
+  changed.clear();
+
+  const blocks = normalizeChangedBlocks(blocksRaw);
+
+  for (const b of blocks) {
+    changed.set(blockKey(b.x, b.y, b.z), b.type);
+  }
+
+  if (data && Number.isFinite(data.selectedBlock) && data.selectedBlock >= 1 && data.selectedBlock <= 4) {
+    selectedBlock = data.selectedBlock;
+  }
+
+  humans.length = 0;
+
+  if (data && Array.isArray(data.humans)) {
+    for (let i = 0; i < data.humans.length; i++) {
+      if (humans.length >= HUMAN_MAX) break;
+
+      const h = data.humans[i];
+
+      const x = Number(h.x);
+      const z = Number(h.z);
+
+      if (!Number.isFinite(x) || !Number.isFinite(z)) continue;
+      if (x < 1.5 || z < 1.5 || x > WORLD - 1.5 || z > WORLD - 1.5) continue;
+      if (blockAt(x, SURFACE_Y + 1, z) !== AIR) continue;
+      if (blockAt(x, SURFACE_Y, z) === AIR) continue;
+
+      humans.push(makeHuman(x, z, Number.isFinite(h.seed) ? h.seed : i + 700));
+    }
+  }
+
+  if (data && Number.isFinite(data.createdHumansCount)) {
+    createdHumansCount = Math.max(0, Math.floor(data.createdHumansCount));
+  } else {
+    createdHumansCount = humans.length;
+  }
+
+  return true;
+}
+
+function readSaveFromKey(key) {
   try {
-    localStorage.setItem(SAVE_KEY, JSON.stringify({
-      changed: arr,
-      selectedBlock
-    }));
-
-    saveNoteTimer = 1.0;
-    saveNote.style.opacity = "1";
-  } catch (e) {}
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch (e) {
+    return null;
+  }
 }
 
 function loadWorld() {
-  try {
-    const raw = localStorage.getItem(SAVE_KEY);
-    if (!raw) return;
+  const mainSave = readSaveFromKey(SAVE_KEY);
 
-    const data = JSON.parse(raw);
-    const arr = Array.isArray(data) ? data : data.changed;
-
-    changed.clear();
-
-    if (Array.isArray(arr)) {
-      for (const item of arr) {
-        const p = String(item).split(",");
-        if (p.length !== 4) continue;
-
-        const x = Number(p[0]);
-        const y = Number(p[1]);
-        const z = Number(p[2]);
-        const type = Number(p[3]);
-
-        if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) continue;
-        if (![AIR, GRASS, STONE, DIRT, PLANKS].includes(type)) continue;
-
-        changed.set(blockKey(x, y, z), type);
-      }
-    }
-
-    if (data && Number.isFinite(data.selectedBlock) && data.selectedBlock >= 1 && data.selectedBlock <= 4) {
-      selectedBlock = data.selectedBlock;
-    }
-  } catch (e) {
-    changed.clear();
+  if (mainSave && applySaveData(mainSave)) {
+    return;
   }
+
+  for (const oldKey of OLD_SAVE_KEYS) {
+    const oldSave = readSaveFromKey(oldKey);
+
+    if (oldSave && applySaveData(oldSave)) {
+      saveWorld(false);
+      return;
+    }
+  }
+}
+
+function saveWorld(showNote = true) {
+  const changedBlocks = [];
+
+  changed.forEach((type, k) => {
+    const p = k.split(",");
+    changedBlocks.push({
+      x: Number(p[0]),
+      y: Number(p[1]),
+      z: Number(p[2]),
+      type
+    });
+  });
+
+  const humanSave = [];
+
+  for (let i = 0; i < humans.length; i++) {
+    const h = humans[i];
+
+    humanSave.push({
+      x: Math.round(h.x * 100) / 100,
+      z: Math.round(h.z * 100) / 100,
+      seed: h.seed
+    });
+  }
+
+  const saveData = {
+    saveVersion: 1,
+    gameVersion: GAME_VERSION,
+    changedBlocks,
+    selectedBlock,
+    humans: humanSave,
+    createdHumansCount
+  };
+
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify(saveData));
+
+    if (showNote) {
+      saveNoteTimer = 1.0;
+      saveNote.style.opacity = "1";
+    }
+  } catch (e) {}
 }
 
 function respawnToSurface() {
@@ -382,7 +509,9 @@ function spawnHumanNearPlayer() {
     const z = clamp(player.z + Math.cos(ang + i * 0.7) * dist, 1.5, WORLD - 2.5);
 
     if (blockAt(x, SURFACE_Y + 1, z) === AIR && blockAt(x, SURFACE_Y, z) !== AIR) {
-      humans.push(makeHuman(x, z, humans.length + 500));
+      humans.push(makeHuman(x, z, humans.length + 500 + createdHumansCount));
+      createdHumansCount++;
+      saveWorld(false);
       return;
     }
 
@@ -642,6 +771,7 @@ function placeBlock() {
 
   setBlock(nx, ny, nz, selectedBlock);
   cachedTarget = getTargetBlock();
+  saveWorld(false);
 }
 
 function breakBlock() {
@@ -650,6 +780,7 @@ function breakBlock() {
 
   setBlock(hit.x, hit.y, hit.z, AIR);
   cachedTarget = getTargetBlock();
+  saveWorld(false);
 }
 
 function drawHumanPart(cx, cy, cz, w, h, r, g, b) {
@@ -963,7 +1094,7 @@ window.addEventListener("keydown", e => {
 
   if (e.code === "KeyG") spawnHumanNearPlayer();
   if (e.code === "KeyR") respawnToSurface();
-  if (e.code === "Enter") saveWorld();
+  if (e.code === "Enter") saveWorld(true);
 
   if (
     e.code === "Space" ||
@@ -1016,7 +1147,7 @@ gBtn.addEventListener("touchstart", e => {
 
 enterBtn.addEventListener("touchstart", e => {
   e.preventDefault();
-  saveWorld();
+  saveWorld(true);
 }, { passive: false });
 
 rBtn.addEventListener("touchstart", e => {
@@ -1152,7 +1283,7 @@ window.addEventListener("touchend", endTouch, { passive: false });
 window.addEventListener("touchcancel", endTouch, { passive: false });
 
 window.addEventListener("beforeunload", () => {
-  saveWorld();
+  saveWorld(false);
 });
 
 let last = performance.now();
@@ -1185,7 +1316,7 @@ function loop(now) {
 
 loadWorld();
 respawnToSurface();
-setSelectedBlock(selectedBlock);
+setSelectedBlock(selectedBlock, false);
 render();
 requestAnimationFrame(loop);
 
