@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Cave Game rd-132211 HTML Recreation</title>
+<title>Cave Game rd-132328 HTML Recreation</title>
 <style>
   html, body {
     margin: 0;
@@ -79,21 +79,10 @@
     pointer-events: auto;
   }
 
-  #placeBtn {
-    bottom: 188px;
-  }
-
-  #breakBtn {
-    bottom: 134px;
-  }
-
-  #enterBtn {
-    bottom: 80px;
-  }
-
-  #rBtn {
-    bottom: 26px;
-  }
+  #placeBtn { bottom: 188px; }
+  #breakBtn { bottom: 134px; }
+  #enterBtn { bottom: 80px; }
+  #rBtn { bottom: 26px; }
 
   #saveNote {
     position: absolute;
@@ -142,8 +131,9 @@ const W = canvas.width;
 const H = canvas.height;
 const image = ctx.createImageData(W, H);
 const pixels = image.data;
+const zbuf = new Float32Array(W * H);
 
-const SAVE_KEY = "cave_game_rd_132211_changed_blocks_v1";
+const SAVE_KEY = "cave_game_rd_132328_changed_blocks_v1";
 
 const WORLD = 256;
 const MAX_Y = 64;
@@ -154,9 +144,12 @@ const GRASS = 1;
 const STONE = 2;
 
 const RENDER_DISTANCE = 34;
+const HUMAN_RENDER_DISTANCE = 30;
 const BUILD_DISTANCE = 5.5;
+const HUMAN_COUNT = 100;
 
 const changed = new Map();
+const humans = [];
 
 const player = {
   x: 128.5,
@@ -191,6 +184,7 @@ const saveNote = document.getElementById("saveNote");
 let cachedTarget = { hit: false };
 let targetTimer = 0;
 let saveNoteTimer = 0;
+let humanThinkTimer = 0;
 
 function blockKey(x, y, z) {
   return x + "," + y + "," + z;
@@ -208,6 +202,11 @@ function hash3(x, y, z) {
   let n = x * 15731 + y * 789221 + z * 1376312589;
   n = (n << 13) ^ n;
   return 1.0 - (((n * (n * n * 15731 + 789221) + 1376312589) & 0x7fffffff) / 1073741824.0);
+}
+
+function rand01(i) {
+  const s = Math.sin(i * 127.1 + 311.7) * 43758.5453;
+  return s - Math.floor(s);
 }
 
 function generatedBlock(x, y, z) {
@@ -304,6 +303,77 @@ function respawnToSurface() {
   player.z = clamp(player.z, 1.5, WORLD - 2.5);
   player.y = SURFACE_Y + 1.02;
   player.vy = 0;
+}
+
+function spawnHumans() {
+  humans.length = 0;
+
+  for (let i = 0; i < HUMAN_COUNT; i++) {
+    let x = 8 + rand01(i * 3 + 1) * (WORLD - 16);
+    let z = 8 + rand01(i * 3 + 2) * (WORLD - 16);
+
+    if (Math.abs(x - player.x) < 5 && Math.abs(z - player.z) < 5) {
+      x += 10;
+      z += 10;
+    }
+
+    humans.push({
+      x,
+      y: SURFACE_Y + 1.01,
+      z,
+      dir: rand01(i * 3 + 3) * Math.PI * 2,
+      speed: 0.55 + rand01(i * 5 + 4) * 0.45,
+      timer: rand01(i * 7 + 5) * 3,
+      walk: rand01(i * 11 + 6) > 0.35,
+      seed: i
+    });
+  }
+}
+
+function updateHumans(dt) {
+  humanThinkTimer -= dt;
+
+  const farLimitSq = 52 * 52;
+
+  for (let i = 0; i < humans.length; i++) {
+    const h = humans[i];
+
+    const dxp = h.x - player.x;
+    const dzp = h.z - player.z;
+    const dsq = dxp * dxp + dzp * dzp;
+
+    if (dsq > farLimitSq) continue;
+
+    h.timer -= dt;
+
+    if (h.timer <= 0) {
+      h.timer = 0.7 + rand01(performance.now() * 0.001 + i * 13.13) * 3.2;
+      h.dir += -1.6 + rand01(performance.now() * 0.002 + i * 9.91) * 3.2;
+      h.walk = rand01(performance.now() * 0.003 + i * 5.17) > 0.28;
+    }
+
+    if (!h.walk) continue;
+
+    const vx = Math.sin(h.dir) * h.speed * dt;
+    const vz = Math.cos(h.dir) * h.speed * dt;
+
+    const nx = h.x + vx;
+    const nz = h.z + vz;
+
+    if (
+      nx < 1.5 || nz < 1.5 || nx > WORLD - 1.5 || nz > WORLD - 1.5 ||
+      blockAt(nx, SURFACE_Y + 1, nz) !== AIR ||
+      blockAt(nx, SURFACE_Y, nz) === AIR
+    ) {
+      h.dir += Math.PI * (0.5 + rand01(i + performance.now() * 0.01));
+      h.walk = false;
+      h.timer = 0.35 + rand01(i + 31) * 1.1;
+      continue;
+    }
+
+    h.x = nx;
+    h.z = nz;
+  }
 }
 
 function texColor(type, faceAxis, step, wx, wy, wz) {
@@ -501,6 +571,101 @@ function breakBlock() {
   cachedTarget = getTargetBlock();
 }
 
+function drawHumanPart(cx, cy, cz, w, h, r, g, b) {
+  if (cz <= 0.2 || cz > HUMAN_RENDER_DISTANCE) return;
+
+  const sx1 = Math.floor(cx - w / 2);
+  const sx2 = Math.floor(cx + w / 2);
+  const sy1 = Math.floor(cy - h / 2);
+  const sy2 = Math.floor(cy + h / 2);
+
+  for (let y = sy1; y <= sy2; y++) {
+    if (y < 0 || y >= H) continue;
+
+    for (let x = sx1; x <= sx2; x++) {
+      if (x < 0 || x >= W) continue;
+
+      const zi = y * W + x;
+      if (cz >= zbuf[zi] - 0.15) continue;
+
+      const edge = x === sx1 || x === sx2 || y === sy1 || y === sy2;
+      const shade = edge ? 0.72 : 1.0;
+      const pi = zi * 4;
+
+      pixels[pi] = clamp(r * shade, 0, 255);
+      pixels[pi + 1] = clamp(g * shade, 0, 255);
+      pixels[pi + 2] = clamp(b * shade, 0, 255);
+      pixels[pi + 3] = 255;
+    }
+  }
+}
+
+function drawHumans(camera) {
+  const list = [];
+
+  for (let i = 0; i < humans.length; i++) {
+    const h = humans[i];
+
+    const dx = h.x - player.x;
+    const dz = h.z - player.z;
+    const d2 = dx * dx + dz * dz;
+
+    if (d2 > HUMAN_RENDER_DISTANCE * HUMAN_RENDER_DISTANCE) continue;
+
+    list.push({ h, d2 });
+  }
+
+  list.sort((a, b) => b.d2 - a.d2);
+
+  for (const item of list) {
+    const h = item.h;
+
+    const rx = h.x - camera.ox;
+    const ry = h.y - camera.oy;
+    const rz = h.z - camera.oz;
+
+    const cx = rx * camera.right[0] + ry * camera.right[1] + rz * camera.right[2];
+    const cy = rx * camera.up[0] + ry * camera.up[1] + rz * camera.up[2];
+    const cz = rx * camera.forward[0] + ry * camera.forward[1] + rz * camera.forward[2];
+
+    if (cz <= 0.2 || cz > HUMAN_RENDER_DISTANCE) continue;
+
+    const baseX = W / 2 + (cx / (cz * camera.scale * camera.aspect)) * W / 2;
+    const baseY = H / 2 - (cy / (cz * camera.scale)) * H / 2;
+
+    const s = 34 / cz;
+    if (s < 1.0) continue;
+
+    const bob = h.walk ? Math.sin(performance.now() * 0.006 + h.seed) * s * 0.05 : 0;
+
+    const skinR = 168;
+    const skinG = 118;
+    const skinB = 78;
+
+    const shirtR = 58;
+    const shirtG = 76;
+    const shirtB = 150;
+
+    const pantsR = 54;
+    const pantsG = 52;
+    const pantsB = 80;
+
+    const armR = 128;
+    const armG = 82;
+    const armB = 58;
+
+    drawHumanPart(baseX - s * 0.18, baseY - s * 0.08 + bob, cz, s * 0.22, s * 0.55, pantsR, pantsG, pantsB);
+    drawHumanPart(baseX + s * 0.18, baseY - s * 0.08 - bob, cz, s * 0.22, s * 0.55, pantsR, pantsG, pantsB);
+
+    drawHumanPart(baseX, baseY - s * 0.55, cz, s * 0.48, s * 0.62, shirtR, shirtG, shirtB);
+
+    drawHumanPart(baseX - s * 0.42, baseY - s * 0.55 - bob, cz, s * 0.18, s * 0.55, armR, armG, armB);
+    drawHumanPart(baseX + s * 0.42, baseY - s * 0.55 + bob, cz, s * 0.18, s * 0.55, armR, armG, armB);
+
+    drawHumanPart(baseX, baseY - s * 1.02, cz, s * 0.46, s * 0.46, skinR, skinG, skinB);
+  }
+}
+
 function render() {
   const target = cachedTarget;
 
@@ -522,6 +687,7 @@ function render() {
   const oz = player.z;
 
   let p = 0;
+  let zi = 0;
 
   for (let y = 0; y < H; y++) {
     const py = (1 - (y + 0.5) / H * 2) * scale;
@@ -551,7 +717,10 @@ function render() {
         r = 112 - t * 18;
         g = 183 - t * 28;
         b = 255 - t * 36;
+        zbuf[zi++] = 9999;
       } else {
+        zbuf[zi++] = hit.dist;
+
         const col = texColor(hit.type, hit.axis, hit.step, hit.wx, hit.wy, hit.wz);
 
         r = col[0];
@@ -599,6 +768,17 @@ function render() {
       pixels[p++] = 255;
     }
   }
+
+  drawHumans({
+    ox,
+    oy,
+    oz,
+    forward,
+    right,
+    up,
+    scale,
+    aspect
+  });
 
   ctx.putImageData(image, 0, 0);
 }
@@ -708,7 +888,8 @@ window.addEventListener("keydown", e => {
   if (
     e.code === "Space" ||
     e.code === "ShiftLeft" ||
-    e.code === "ShiftRight"
+    e.code === "ShiftRight" ||
+    e.code === "KeyG"
   ) {
     e.preventDefault();
   }
@@ -882,6 +1063,7 @@ function loop(now) {
 
   movePlayer(dt);
   updateTarget(dt);
+  updateHumans(dt);
 
   if (saveNoteTimer > 0) {
     saveNoteTimer -= dt;
@@ -903,6 +1085,7 @@ function loop(now) {
 
 loadWorld();
 respawnToSurface();
+spawnHumans();
 render();
 requestAnimationFrame(loop);
 
